@@ -1,6 +1,12 @@
 # distribution jobs for importing properties
 
-this is a distribution jobs. 
+This is a distribution jobs. When my spider scrapy lots of data to import properties,
+
+we must quickly process every listing. That was too slow in my old version when I used WpCron function in WordPress frameworks.
+
+so I design this distribution framework and asynchronous jobs. And it is very fast by multiple processess.
+
+And it's depend on mysql and redis.
 
 ## framework:
 
@@ -47,29 +53,29 @@ supervisorctl update
 
 about conf setting:
 
-```ini
-[program:my_worker]
-command=php /path/to/worker.php
-numprocs=3
-process_name=%(program_name)s_%(process_num)02d
-```
+    ```ini
+    [program:jiwu_worker]
+    command=php /jiwu/plugins/worker.php
+    numprocs=3
+    process_name=%(program_name)s_%(process_num)02d
+    ```
 
 - numprocs: do you want to start `numprocs` workers programs at the same time? default=1
 - process_name: do you want to rename the process name?
 
     ```bash
-    my_worker_00
-    my_worker_01
-    my_worker_02
+    jiwu_worker_00
+    jiwu_worker_01
+    jiwu_worker_02
     ```
   
-```ini
-[program:jiwu_worker]
-command=php /path/to/worker.php
-numprocs=5
-process_name=%(program_name)s_%(process_num)02d
-autostart=true
-autorestart=true
-stdout_logfile=/var/log/jiwu_worker_%(process_num)02d.log
-stderr_logfile=/var/log/jiwu_worker_%(process_num)02d_error.log
-```
+    ```ini
+    [program:jiwu_worker]
+    command=php /path/to/worker.php
+    numprocs=5
+    process_name=%(program_name)s_%(process_num)02d
+    autostart=true
+    autorestart=true
+    stdout_logfile=/var/log/jiwu_worker_%(process_num)02d.log
+    stderr_logfile=/var/log/jiwu_worker_%(process_num)02d_error.log
+    ```
