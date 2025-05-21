@@ -570,7 +570,6 @@ ENV/
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
 pyvenv.cfg
 .venv
 pip-selfcheck.json
@@ -666,3 +665,4 @@ newsau/images/full
 *.sh
 *.pkl
 .DS_Store
+
