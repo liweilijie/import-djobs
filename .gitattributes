@@ -1,0 +1,8 @@
+# files will be auto encrypted when commit
+Makefile filter=git-crypt diff=git-crypt
+
+
+# avoid accidentally encrypt files
+# NOTES: need to be at last to have highest priority
+.gitignore !filter !diff
+.gitattributes !filter !diff
