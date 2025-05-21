@@ -17,7 +17,7 @@ function jiwu_dispatch_tasks() {
     // 定义队列名称
     $queues = [
         'rent_listings' => 'jiwu_rent_task_queue',
-        'listings'      => 'jiwu_listing_task_queue',
+        'listings'      => 'jiwu_sale_task_queue',
     ];
 
     // 获取全局 $wpdb 对象
