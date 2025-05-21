@@ -53,12 +53,12 @@ supervisorctl update
 
 about conf setting:
 
-    ```ini
-    [program:jiwu_worker]
-    command=php /jiwu/plugins/worker.php
-    numprocs=3
-    process_name=%(program_name)s_%(process_num)02d
-    ```
+```ini
+[program:jiwu_worker]
+command=php /jiwu/plugins/worker.php
+numprocs=3
+process_name=%(program_name)s_%(process_num)02d
+```
 
 - numprocs: do you want to start `numprocs` workers programs at the same time? default=1
 - process_name: do you want to rename the process name?
