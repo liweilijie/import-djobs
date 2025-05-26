@@ -13,8 +13,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // 引入调度器和工作进程函数
 require_once plugin_dir_path( __FILE__ ) . 'includes/dispatcher.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/worker_rent.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/worker_listing.php';
+//require_once plugin_dir_path( __FILE__ ) . 'includes/worker_rent.php';
+//require_once plugin_dir_path( __FILE__ ) . 'includes/worker_listing.php';
 
 // 插件激活时的操作
 function jiwu_djobs_activate() {

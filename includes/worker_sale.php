@@ -139,6 +139,7 @@ function process_sale_property($listing): bool
             update_post_meta($post_id, $imported_ref_key, $unique_id);
             $wpdb->update($table_name, ['status' => 1, 'post_id' => $post_id], ['id' => $listing->id]);
             $inserted_updated = 'inserted';
+            error_log('sale inserted and listing->id:' . $listing->id . ' $en_post_id:' . $post_id);
         } else {
             $wpdb->update($table_name, ['status' => 2], ['id' => $listing->id]);
         }
@@ -658,6 +659,10 @@ function process_sale_property($listing): bool
                 }
             }
         }
+    }
+
+    if ($inserted_updated === 'inserted') {
+        $translated_id = JiwuDeepSeekTranslator::translateProperty($post_id);
     }
 
     return true;

@@ -678,5 +678,10 @@ function process_rent_property($listing): bool
             }
         }
     }
+
+    if ($inserted_updated === 'inserted') {
+        $translated_id = JiwuDeepSeekTranslator::translateProperty($post_id);
+    }
+
     return true;
 }
