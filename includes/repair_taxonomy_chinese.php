@@ -85,3 +85,113 @@ function repair_taxonomy_chinese()
     error_log("🎉 同步完成！共处理中文房源文章：{$total}");
 }
 
+
+function jiwu_import_property_types()
+{
+    // 设置无限执行时间
+    set_time_limit(0);
+
+    // 引入 WordPress 环境
+    require_once dirname(__FILE__, 5) . '/wp-load.php';
+
+    // 定义 property_type 映射表
+    $property_types = [
+        'rural'     => 'Rural',
+        'land'      => 'Land',
+        'house'     => 'House',
+        'apartment' => 'Apartment',
+        'townhouse' => 'Townhouse',
+        'other'     => 'Other',
+        'unit'      => 'Unit',
+        'cropping'  => 'Cropping',
+        'villa'     => 'Villa',
+        'studio'    => 'Studio',
+        'farming'   => 'Farming',
+        'living'    => 'Retirement Living',
+    ];
+
+    foreach ($property_types as $slug => $name) {
+        // 检查是否已存在
+        if (!term_exists($name, 'property_type')) {
+            wp_insert_term($name, 'property_type', [
+                'slug' => $slug,
+            ]);
+        }
+    }
+
+}
+
+function jiwu_import_cleaned_suburb_csv($csv_path) {
+    // 设置无限执行时间
+    set_time_limit(0);
+
+    // 引入 WordPress 环境
+    require_once dirname(__FILE__, 5) . '/wp-load.php';
+
+    if (!file_exists($csv_path)) {
+        echo "CSV 文件不存在：$csv_path\n";
+        return;
+    }
+
+    $handle = fopen($csv_path, 'r');
+    if (!$handle) {
+        echo "无法读取 CSV 文件。\n";
+        return;
+    }
+
+    $row = 0;
+    while (($data = fgetcsv($handle)) !== false) {
+        if ($row === 0) {
+            $row++; // 跳过表头
+            continue;
+        }
+
+        list($postcode_raw, $suburb_raw, $state_raw, $country_raw) = $data;
+
+        // === 数据清洗 ===
+        $postcode = trim($postcode_raw);
+        $suburb = ucwords(strtolower(trim($suburb_raw)));
+        $state = strtoupper(trim($state_raw));
+        $country = strtoupper(trim($country_raw));
+
+        // === 合法性验证 ===
+        if (!preg_match('/^\d{4}$/', $postcode)) {
+            echo "❌ 非法 postcode：{$postcode} 跳过\n";
+            continue;
+        }
+        if (!in_array($state, ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'])) {
+            echo "❌ 非法 state：{$state} 跳过\n";
+            continue;
+        }
+        if ($country !== 'AU') {
+            echo "❌ 非法国家：{$country} 跳过\n";
+            continue;
+        }
+
+        error_log($postcode . ' ' . $suburb . ' ' . $state . ' ' . $country);
+        $country = 'Australia';
+
+        // === 插入到 WP ===
+        // 插入国家
+        $country_term = term_exists('Australia', 'property_country') ?: wp_insert_term('Australia', 'property_country');
+        $country_id = is_array($country_term) ? $country_term['term_id'] : $country_term;
+
+        // 插入州
+        $state_term = term_exists($state, 'property_state') ?: wp_insert_term($state, 'property_state');
+        $state_id = is_array($state_term) ? $state_term['term_id'] : $state_term;
+        update_term_meta($state_id, 'fave_state_country', $country_id);
+
+        // 插入城市（suburb）
+        $city_term = term_exists($suburb, 'property_city') ?: wp_insert_term($suburb, 'property_city');
+        $city_id = is_array($city_term) ? $city_term['term_id'] : $city_term;
+        update_term_meta($city_id, 'fave_city_state', $state_id);
+        update_term_meta($city_id, 'fave_city_country', $country_id);
+        update_term_meta($city_id, 'fave_city_postcode', $postcode);
+
+        echo "✅ 导入 suburb：{$suburb} ({$postcode})\n";
+        $row++;
+    }
+
+    fclose($handle);
+    echo "🎉 完成，处理了 {$row} 行数据。\n";
+}

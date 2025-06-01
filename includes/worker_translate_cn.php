@@ -73,60 +73,187 @@ class JiwuDeepSeekTranslator
 
     public function translatePostWithWPML(int $post_id, string $target_lang = 'zh-hans')
     {
+        // 避免自动保存和修订版触发翻译
+        if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) {
+            error_log('autosave defined and return.');
+            return false;
+        }
+        if ( wp_is_post_revision( $post_id ) ) {
+            error_log('is post revision and return.');
+            return false;
+        }
+
+        // 获取当前文章语言，确保只针对英文（默认）文章进行翻译
+        $lang_details = apply_filters('wpml_post_language_details', NULL, $post_id);
+        if ( empty($lang_details) || !isset($lang_details['language_code']) ) {
+            error_log('lang details error.');
+            return false;
+        }
+        $current_lang = $lang_details['language_code'];
+        // 仅在英文版本保存时才执行，避免中文版本也触发
+        if ( $current_lang !== 'en' ) {
+            error_log('不是英文版本不处理。' . $current_lang . ' id ' . $post_id);
+            return false;
+        }
+
         if (!defined('ICL_SITEPRESS_VERSION') || !has_filter('wpml_element_trid')) {
             error_log('[JIWU] WPML not initialized or filters unavailable');
             return false;
         }
 
         $post = get_post($post_id);
-        if (!$post || $post->post_status === 'trash') {
-            error_log("[JIWU] Post $post_id 不存在或被删除");
+        if (!$post || $post->post_type !== 'property' || $post->post_status === 'trash') {
+            error_log("[JIWU] Post $post_id 不存在或者类型不对或被删除");
             return false;
         }
 
-        do_action('wpml_admin_make_post_duplicates', $post_id);
-        sleep(1);
+        // 获取该文章所在的翻译组（trid）
+        $trid = apply_filters('wpml_element_trid', NULL, $post_id, 'post_property');
+        if ( empty($trid) ) {
+            error_log("WPML: 无法获取文章 $post_id 的翻译组 trid");
+            return false;
+        }
+        // 获取该组内所有语言的文章翻译信息
+        $translations = apply_filters('wpml_get_element_translations', NULL, $trid, 'post_property');
 
-        $trid = apply_filters('wpml_element_trid', null, $post_id, 'post_property');
-        $translations = apply_filters('wpml_get_element_translations', null, $trid, 'post_property');
+        // 如果没有中文翻译，使用 WPML 提供的 hook 创建所有语言的副本
+        if ( empty($translations['zh-hans']->element_id) ) {
+            do_action('wpml_make_post_duplicates', $post_id, [
+                'from_lang' => 'en',
+                'force'     => false
+            ]);
+            // 重新获取翻译信息
+            $translations = apply_filters('wpml_get_element_translations', NULL, $trid, 'post_property');
+        }
 
-        if (!isset($translations[$target_lang])) {
-            error_log("[JIWU] 翻译组中未找到目标语言 {$target_lang}");
+        // 获取中文翻译的文章 ID
+        if ( isset($translations[$target_lang]) && !empty($translations['zh-hans']->element_id) ) {
+            $translated_post_id = intval($translations[$target_lang]->element_id);
+        } else {
+            error_log("WPML: 文章 $post_id 的中文翻译未找到");
             return false;
         }
 
-        $translated_post_id = $translations[$target_lang]->element_id;
-
+        // ❗必须先切换语言上下文
         do_action('wpml_switch_language', $target_lang);
+
+        // ❗必须先解除绑定
         delete_post_meta($translated_post_id, '_icl_lang_duplicate_of');
 
-        $translated_title = $post->post_title;
-        $translated_content = $this->translateToChinese($post->post_content);
 
-        wp_update_post([
-            'ID' => $translated_post_id,
-            'post_title' => $translated_title,
-            'post_content' => $translated_content,
-            'post_status' => 'publish',
-        ]);
-
-        $meta_data = get_post_meta($post_id);
-        foreach ($meta_data as $meta_key => $meta_values) {
-            if (strpos($meta_key, '_icl_') === 0 || $meta_key === '_wpml_media_has_media') {
-                continue;
-            }
-            foreach ($meta_values as $meta_value) {
-                add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
-            }
+        $original_content = $post->post_content;
+        try {
+            $translated_content = $this->translateToChinese( $original_content );
+        } catch ( Exception $e ) {
+            error_log("翻译文章 $post_id 内容出错：" . $e->getMessage());
+            return false;
         }
 
-        $thumb_id = get_post_thumbnail_id($post_id);
-        if ($thumb_id) {
-            set_post_thumbnail($translated_post_id, $thumb_id);
+        // 更新中文版本：内容、标题（保留英文）及状态为发布
+        static $is_updating = false;
+        if ( $is_updating ) {
+            // 避免递归调用自身
+            return;
+        }
+        $is_updating = true;
+        $update_post = array(
+            'ID'           => $translated_post_id,
+            'post_content' => $translated_content,
+            'post_title'   => $post->post_title,
+            'post_status'  => 'publish',
+        );
+        wp_update_post( $update_post );
+        $is_updating = false;
+
+        // ✅ Step: 复制字段
+        $this->safe_copy_post_meta($post_id, $translated_post_id);
+
+
+//        $multiple_meta_keys = ['fave_property_images', 'fave_agents']; // 所有你知道是多值的字段
+//
+//        foreach ($all_meta as $meta_key => $meta_values) {
+//            if (strpos($meta_key, '_icl_') === 0 || $meta_key === '_wpml_media_has_media') {
+//                continue;
+//            }
+//
+//            if (count($meta_values) > 1) {
+//                if (!in_array($meta_key, $multiple_meta_keys)) {
+//                   error_log('TODO: multiple meta keys:' . $meta_key . print_r($meta_values, true));
+//                }
+//            }
+//
+//            // 如果是多值字段（如 fave_property_images）
+//            if (in_array($meta_key, $multiple_meta_keys, true)) {
+//                foreach (array_unique($meta_values) as $meta_value) {
+//                    add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
+//                }
+//            } else {
+//                // 单值字段：取最后一个（或首个），并 update
+//                update_post_meta(
+//                    $translated_post_id,
+//                    $meta_key,
+//                    maybe_unserialize(end($meta_values))
+//                );
+//            }
+//        }
+
+        // 复制特色图片（缩略图）
+        $thumbnail_id = get_post_thumbnail_id( $post_id );
+        if ( $thumbnail_id ) {
+            set_post_thumbnail( $translated_post_id, $thumbnail_id );
+        } else {
+            error_log('cannot update' . $translated_post_id .'  post thumbnail');
         }
 
         error_log("[JIWU] 翻译完成: 原文 $post_id => 中文 $translated_post_id");
         return $translated_post_id;
+    }
+
+    /**
+     * 安全复制 post_meta 数据（支持多值字段，如 fave_property_images）
+     *
+     * @param int $source_post_id 源文章 ID（英文）
+     * @param int $target_post_id 目标文章 ID（中文）
+     * @param array $exclude_keys 可选，排除字段
+     */
+    public function safe_copy_post_meta(int $source_post_id, int $target_post_id, array $exclude_keys = []) {
+        $default_exclude_prefixes = ['_icl_'];
+        $default_exclude_keys = ['_wpml_media_has_media', '_edit_lock', '_edit_last'];
+
+        // 多值字段（使用 add_post_meta）
+        $multi_value_keys = [
+            'fave_property_images',
+            'fave_agents',
+            'floor_plans',
+            'houzez_views_by_date',
+        ];
+
+        $all_meta = get_post_meta($source_post_id);
+
+        foreach ($all_meta as $meta_key => $meta_values) {
+            // 跳过 WPML 或显式排除字段
+            foreach ($default_exclude_prefixes as $prefix) {
+                if (strpos($meta_key, $prefix) === 0) {
+                    continue 2;
+                }
+            }
+            if (in_array($meta_key, array_merge($default_exclude_keys, $exclude_keys), true)) {
+                continue;
+            }
+
+            // 清空目标已有该字段（防止旧值/重复）
+            delete_post_meta($target_post_id, $meta_key);
+
+            if (in_array($meta_key, $multi_value_keys, true)) {
+                foreach (array_unique($meta_values) as $value) {
+                    add_post_meta($target_post_id, $meta_key, maybe_unserialize($value));
+                }
+            } else {
+                // 只保留一个值（最新的）
+                $last_value = maybe_unserialize(end($meta_values));
+                update_post_meta($target_post_id, $meta_key, $last_value);
+            }
+        }
     }
 
     public static function translateProperty(int $post_id): int|WP_Error|false

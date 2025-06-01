@@ -57,6 +57,67 @@ function jiwu_process_sale_tasks() {
     }
 }
 
+/*
+ * fave_property_size	1200
+fave_property_size_prefix	Sq Ft
+fave_property_bedrooms	4
+fave_property_bathrooms	2
+fave_property_garage	1
+fave_property_garage_size	200 SqFt
+fave_property_year	2016
+fave_property_id	HZ51
+_vc_post_settings	a:1:{s:10:"vc_grid_id";a:0:{}}
+fave_property_price	1599000
+fave_property_sec_price	15000
+fave_property_price_postfix	sq ft
+fave_property_map	1
+fave_property_map_address	3385 Pan American Dr, Miami, FL 33133, USA
+fave_property_location	25.7292641,-80.23480649999999,14
+houzez_geolocation_lat	25.7292641
+houzez_geolocation_long	-80.23480649999999
+fave_property_country	US
+fave_agents	156
+fave_additional_features_enable	enable
+additional_features	a:6:{i:0;a:2:{s:29:"fave_additional_feature_title";s:7:"Deposit";s:29:"fave_additional_feature_value";s:3:"20%";}i:1;a:2:{s:29:"fave_additional_feature_title";s:9:"Pool Size";s:29:"fave_additional_feature_value";s:8:"300 Sqft";}i:2;a:2:{s:29:"fave_additional_feature_title";s:17:"Last remodel year";s:29:"fave_additional_feature_value";s:4:"1987";}i:3;a:2:{s:29:"fave_additional_feature_title";s:9:"Amenities";s:29:"fave_additional_feature_value";s:9:"Clubhouse";}i:4;a:2:{s:29:"fave_additional_feature_title";s:17:"Additional Rooms:";s:29:"fave_additional_feature_value";s:10:"Guest Bath";}i:5;a:2:{s:29:"fave_additional_feature_title";s:9:"Equipment";s:29:"fave_additional_feature_value";s:11:"Grill - Gas";}}
+fave_floor_plans_enable	enable
+floor_plans	a:2:{i:0;a:7:{s:15:"fave_plan_title";s:11:"First Floor";s:15:"fave_plan_rooms";s:8:"670 Sqft";s:19:"fave_plan_bathrooms";s:8:"530 Sqft";s:15:"fave_plan_price";s:5:"1,650";s:14:"fave_plan_size";s:9:"1267 Sqft";s:15:"fave_plan_image";s:75:"https://sandbox.favethemes.com/houzez/wp-content/uploads/2016/01/plan-1.jpg";s:21:"fave_plan_description";s:290:"Plan description. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.";}i:1;a:7:{s:15:"fave_plan_title";s:12:"Second Floor";s:15:"fave_plan_rooms";s:8:"543 Sqft";s:19:"fave_plan_bathrooms";s:8:"238 Sqft";s:15:"fave_plan_price";s:5:"1,600";s:14:"fave_plan_size";s:9:"1345 Sqft";s:15:"fave_plan_image";s:75:"https://sandbox.favethemes.com/houzez/wp-content/uploads/2016/01/plan-2.jpg";s:21:"fave_plan_description";s:290:"Plan description. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.";}}
+fave_property_images	16111
+fave_featured	1
+houzez_featured_listing_date	2025-05-28 12:22:42
+fave_video_url	https://www.youtube.com/watch?v=-NInBEdSvp8
+fave_video_image	84
+fave_property_address	3385 Pan American Dr
+fave_property_zip	33133
+fave_agent_display_option	agent_info
+fave_property_images	16110
+fave_currency_info
+_thumbnail_id	16123
+fave_property_images	16109
+fave_property_images	16108
+fave_property_images	16107
+fave_property_images	16106
+fave_property_images	16105
+fave_property_agency	-1
+fave_property_map_street_view	show
+fave_payment_status	not_paid
+slide_template	default
+houzez_total_property_views	1869
+houzez_views_by_date	a:61:{s:10:"11-25-2019";i:1;s:10:"11-26-2019";i:1;s:10:"11-27-2019";i:1;s:10:"11-28-2019";i:1;s:10:"11-29-2019";i:2;s:10:"11-30-2019";i:2;s:10:"12-02-2019";i:1;s:10:"12-03-2019";i:1;s:10:"12-04-2019";i:1;s:10:"12-05-2019";i:1;s:10:"12-06-2019";i:2;s:10:"12-08-2019";i:1;s:10:"12-09-2019";i:2;s:10:"12-10-2019";i:3;s:10:"12-12-2019";i:1;s:10:"12-13-2019";i:1;s:10:"12-14-2019";i:2;s:10:"12-16-2019";i:3;s:10:"12-17-2019";i:1;s:10:"12-18-2019";i:2;s:10:"12-19-2019";i:1;s:10:"12-20-2019";i:2;s:10:"12-22-2019";i:1;s:10:"12-23-2019";i:1;s:10:"12-24-2019";i:1;s:10:"12-26-2019";i:2;s:10:"12-27-2019";i:1;s:10:"12-28-2019";i:1;s:10:"12-30-2019";i:1;s:10:"12-31-2019";i:3;s:10:"01-01-2020";i:1;s:10:"01-02-2020";i:2;s:10:"01-05-2020";i:1;s:10:"01-07-2020";i:2;s:10:"01-08-2020";i:1;s:10:"01-09-2020";i:2;s:10:"01-11-2020";i:1;s:10:"01-13-2020";i:2;s:10:"01-14-2020";i:1;s:10:"01-17-2020";i:1;s:10:"01-19-2020";i:1;s:10:"01-20-2020";i:2;s:10:"01-21-2020";i:1;s:10:"01-22-2020";i:1;s:10:"01-23-2020";i:1;s:10:"01-25-2020";i:2;s:10:"01-26-2020";i:1;s:10:"01-28-2020";i:1;s:10:"01-30-2020";i:2;s:10:"01-31-2020";i:1;s:10:"03-30-2020";i:1;s:10:"03-31-2020";i:1;s:10:"04-03-2020";i:1;s:10:"04-06-2020";i:1;s:10:"04-09-2020";i:3;s:10:"04-10-2020";i:1;s:10:"04-11-2020";i:1;s:10:"04-12-2020";i:2;s:10:"05-28-2025";i:1;s:10:"05-29-2025";i:1;s:10:"05-30-2025";i:14;}
+fave_multiunit_plans_enable	disable
+fave_loggedintoview	0
+houzez_recently_viewed	2025-05-30 21:18:37
+houzez_geolocation_lat	25.7292641
+houzez_geolocation_long	-80.23480649999999
+fave_property_images	16112
+fave_virtual_tour	<iframe width="853" height="480" src="https://my.matterport.com/show/?m=zEWsxhZpGba&play=1&qs=1" frameborder="0" allowfullscreen="allowfullscreen"></iframe>
+fave_single_top_area	global
+fave_single_content_area	global
+houzez_manual_expire
+_houzez_expiration_date_status	saved
+fave_property_images	16123
+_elementor_page_assets	a:0:{}
+ */
+
 function process_sale_property($listing): bool
 {
     global $wpdb;
@@ -75,7 +136,7 @@ function process_sale_property($listing): bool
 
     // 借鉴feed里面的import流程进行导入开发
     $unique_id = $listing->unique_id;
-    $imported_ref_key = '_imported_ref_jiwu';
+    $imported_ref_key = '_imported_sale_ref_jiwu';
 
     $args = [
         'post_type' => 'property',
@@ -328,6 +389,8 @@ function process_sale_property($listing): bool
         $street  = isset($listing->street) ? trim($listing->street) : '';
         $postcode = isset($listing->postcode) ? trim($listing->postcode) : '';
         $area    = isset($listing->area) ? trim($listing->area) : $suburb;
+        $city = isset($listing->city) ? trim($listing->city) : $state;
+        $label = isset($listing->label) ? trim($listing->label) : '';
 
         // 更新分类法（taxonomy）
         // 关联 state 到 property_state 分类法
@@ -338,6 +401,26 @@ function process_sale_property($listing): bool
             }
             if (!is_wp_error($term)) {
                 wp_set_object_terms($post_id, (int)$term['term_id'], 'property_state');
+            }
+        }
+
+        if (!empty($city)) {
+            $term = term_exists($city, 'property_city');
+            if (!$term) {
+                $term = wp_insert_term($city, 'property_city');
+            }
+            if (!is_wp_error($term)) {
+                wp_set_object_terms($post_id, (int)$term['term_id'], 'property_city');
+            }
+        }
+
+        if (!empty($label)) {
+            $term = term_exists($label, 'property_label');
+            if (!$term) {
+                $term = wp_insert_term($city, 'property_label');
+            }
+            if (!is_wp_error($term)) {
+                wp_set_object_terms($post_id, (int)$term['term_id'], 'property_label');
             }
         }
 
@@ -352,6 +435,16 @@ function process_sale_property($listing): bool
             }
         }
 
+        if (!empty($area)) {
+            $term = term_exists($area, 'property_area');
+            if (!$term) {
+                $term = wp_insert_term($area, 'property_area');
+            }
+            if (!is_wp_error($term)) {
+                wp_set_object_terms($post_id, (int)$term['term_id'], 'property_area');
+            }
+        }
+
         // 更新元字段（meta fields）
         update_post_meta($post_id, 'fave_property_city', $suburb);
         update_post_meta($post_id, 'fave_property_state', $state);
@@ -363,6 +456,7 @@ function process_sale_property($listing): bool
         $address_parts = array_filter([$street, $suburb, $state, $postcode]);
         $display_address = implode(', ', $address_parts);
         update_post_meta($post_id, 'fave_property_map', 1);
+        update_post_meta($post_id, 'fave_property_map_street_view', 'show');
         update_post_meta($post_id, 'fave_property_map_address', $display_address);
 
         $address_parts = array();
@@ -390,34 +484,64 @@ function process_sale_property($listing): bool
 
         // property_type
         // 获取 property_type 字段
+//        $property_type = $listing->property_type ?? '';
+//
+//        if (!empty($property_type)) {
+//            $taxonomy = 'property_type';
+//
+//            // 检查术语是否已存在
+//            $term = get_term_by('name', $property_type, $taxonomy);
+//
+//            if (!$term) {
+//                // 如果术语不存在，则创建
+//                $result = wp_insert_term($property_type, $taxonomy);
+//                if (is_wp_error($result)) {
+//                    // 记录错误日志
+//                    error_log("无法创建物业类型 '{$property_type}': " . $result->get_error_message());
+//                    return false;
+//                }
+//                $term_id = $result['term_id'];
+//            } else {
+//                $term_id = $term->term_id;
+//            }
+//
+//            // 将术语与当前文章关联
+//            $set_result = wp_set_object_terms($post_id, (int)$term_id, $taxonomy, false);
+//            if (is_wp_error($set_result)) {
+//                // 记录错误日志
+//                error_log("无法将物业类型 '{$property_type}' 分配给文章 ID {$post_id}: " . $set_result->get_error_message());
+//            }
+//        }
+
         $property_type = $listing->property_type ?? '';
+        $taxonomy = 'property_type';
 
         if (!empty($property_type)) {
-            $taxonomy = 'property_type';
-
-            // 检查术语是否已存在
-            $term = get_term_by('name', $property_type, $taxonomy);
+            // 使用 slug 来查找术语
+            $term = get_term_by('slug', $property_type, $taxonomy);
 
             if (!$term) {
-                // 如果术语不存在，则创建
-                $result = wp_insert_term($property_type, $taxonomy);
+                error_log('Property Type: ' . $property_type . ' cannot find so create.');
+                // 没有找到，用 ucfirst() 设置 name，再插入
+                $name = ucfirst(str_replace('-', ' ', $property_type));
+                $result = wp_insert_term($name, $taxonomy, ['slug' => $property_type]);
+
                 if (is_wp_error($result)) {
-                    // 记录错误日志
                     error_log("无法创建物业类型 '{$property_type}': " . $result->get_error_message());
                     return false;
                 }
+
                 $term_id = $result['term_id'];
             } else {
+                error_log('Property Type: ' . $property_type . ' already exists.');
                 $term_id = $term->term_id;
             }
 
-            // 将术语与当前文章关联
-            $set_result = wp_set_object_terms($post_id, (int)$term_id, $taxonomy, false);
-            if (is_wp_error($set_result)) {
-                // 记录错误日志
-                error_log("无法将物业类型 '{$property_type}' 分配给文章 ID {$post_id}: " . $set_result->get_error_message());
-            }
+            // 给 post 设置分类（假设你已创建了 property）
+            wp_set_object_terms($post_id, intval($term_id), $taxonomy);
         }
+
+
 
         // 解析图片 URL 数组
         $images = json_decode( $listing->images, true );
@@ -491,6 +615,9 @@ function process_sale_property($listing): bool
         $agency_id = 0;
         $agency_name = '';
 
+        // 如果有agent的情况下，则 fave_property_agency=-1
+        // Property Agency（所属机构） – meta_key: _houzez_property_agency（fave_property_agency）。类型为整数
+        // 用于关联房源的中介机构(Agency)ID。一般在经纪人隶属于某Agency时自动关联；如果房源由机构发布也可手动指定。赋值示例：update_post_meta($id, 'fave_property_agency', 45)（将Agency ID 45关联此房源）。
         if (!empty($agency) && is_array($agency)) {
             $agency_name = sanitize_text_field($agency['name']);
             if (!empty($agency_name)) {
@@ -647,10 +774,10 @@ function process_sale_property($listing): bool
                             update_post_meta($agent_id, 'fave_agent_agencies', $agency_id);
                             update_post_meta($agent_id, 'fave_agent_position', 'Company Agent');
                         }
-                        if (!empty($agent_name)) {
-                            // 将经纪人关联到经纪公司
-                            update_post_meta($agent_id, 'fave_agent_company', $agent_name);
-                        }
+//                        if (!empty($agent_name)) {
+//                            // 将经纪人关联到经纪公司
+//                            update_post_meta($agent_id, 'fave_agent_company', $agent_name);
+//                        }
                         // 将房源关联到经纪人
                         update_post_meta( $post_id, 'fave_agents', $agent_id );
                         // 设置房源显示选项为显示经纪人信息

@@ -394,3 +394,68 @@ $meta_data = get_post_meta($source_post_id);
     error_log("✅ 成功复制 meta：from {$source_post_id} → to {$target_post_id}");
 }
 
+
+public function translatePostWithWPML(int $post_id, string $target_lang = 'zh-hans') {
+if (!defined('ICL_SITEPRESS_VERSION') || !function_exists('wpml_make_post_duplicates')) {
+error_log('[JIWU] WPML 未加载或不兼容此函数（需要 WPML >= 3.2）');
+return false;
+}
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_status === 'trash') {
+        error_log("[JIWU] Post $post_id 不存在或被删除");
+        return false;
+    }
+
+    // 1. 创建目标语言副本（如果尚不存在）
+    wpml_make_post_duplicates($post_id);
+
+    // 2. 等待 WPML 创建翻译副本（最多 5 秒）
+    $translated_post_id = 0;
+    $trid = apply_filters('wpml_element_trid', null, $post_id, 'post_property');
+
+    for ($i = 0; $i < 10; $i++) {
+        $translations = apply_filters('wpml_get_element_translations', null, $trid, 'post_property');
+        if (isset($translations[$target_lang])) {
+            $translated_post_id = $translations[$target_lang]->element_id;
+            break;
+        }
+        usleep(500000); // 0.5 秒
+    }
+
+    if (!$translated_post_id) {
+        error_log("[JIWU] 未能获取 $post_id 的 {$target_lang} 翻译副本");
+        return false;
+    }
+
+    // 3. 翻译标题和内容
+    $translated_title = $post->post_title;
+    $translated_content = $this->translateToChinese($post->post_content);
+
+    wp_update_post([
+        'ID'           => $translated_post_id,
+        'post_title'   => $translated_title,
+        'post_content' => $translated_content,
+        'post_status'  => 'publish',
+    ]);
+
+    // 4. 拷贝非 WPML 专用的 meta 信息
+    $meta_data = get_post_meta($post_id);
+    foreach ($meta_data as $meta_key => $meta_values) {
+        if (strpos($meta_key, '_icl_') === 0 || $meta_key === '_wpml_media_has_media') {
+            continue;
+        }
+        foreach ($meta_values as $meta_value) {
+            update_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
+        }
+    }
+
+    // 5. 设置特色图像
+    $thumb_id = get_post_thumbnail_id($post_id);
+    if ($thumb_id) {
+        set_post_thumbnail($translated_post_id, $thumb_id);
+    }
+
+    error_log("[JIWU] 翻译完成: 原文 $post_id => 中文 $translated_post_id");
+    return $translated_post_id;
+}

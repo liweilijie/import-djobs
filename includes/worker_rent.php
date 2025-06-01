@@ -381,6 +381,7 @@ function process_rent_property($listing): bool
         $address_parts = array_filter([$street, $suburb, $state, $postcode]);
         $display_address = implode(', ', $address_parts);
         update_post_meta($post_id, 'fave_property_map', 1);
+        update_post_meta($post_id, 'fave_property_map_street_view', 'show');
         update_post_meta($post_id, 'fave_property_map_address', $display_address);
 
         $address_parts = array();
@@ -408,33 +409,61 @@ function process_rent_property($listing): bool
 
         // property_type
         // 获取 property_type 字段
+//        $property_type = $listing->property_type ?? '';
+//
+//        if (!empty($property_type)) {
+//            $taxonomy = 'property_type';
+//
+//            // 检查术语是否已存在
+//            $term = get_term_by('name', $property_type, $taxonomy);
+//
+//            if (!$term) {
+//                // 如果术语不存在，则创建
+//                $result = wp_insert_term($property_type, $taxonomy);
+//                if (is_wp_error($result)) {
+//                    // 记录错误日志
+//                    error_log("无法创建物业类型 '{$property_type}': " . $result->get_error_message());
+//                    return false;
+//                }
+//                $term_id = $result['term_id'];
+//            } else {
+//                $term_id = $term->term_id;
+//            }
+//
+//            // 将术语与当前文章关联
+//            $set_result = wp_set_object_terms($post_id, (int)$term_id, $taxonomy, false);
+//            if (is_wp_error($set_result)) {
+//                // 记录错误日志
+//                error_log("无法将物业类型 '{$property_type}' 分配给文章 ID {$post_id}: " . $set_result->get_error_message());
+//            }
+//        }
+
         $property_type = $listing->property_type ?? '';
+        $taxonomy = 'property_type';
 
         if (!empty($property_type)) {
-            $taxonomy = 'property_type';
-
-            // 检查术语是否已存在
-            $term = get_term_by('name', $property_type, $taxonomy);
+            // 使用 slug 来查找术语
+            $term = get_term_by('slug', $property_type, $taxonomy);
 
             if (!$term) {
-                // 如果术语不存在，则创建
-                $result = wp_insert_term($property_type, $taxonomy);
+                error_log('Property Type: ' . $property_type . ' cannot find so create.');
+                // 没有找到，用 ucfirst() 设置 name，再插入
+                $name = ucfirst(str_replace('-', ' ', $property_type));
+                $result = wp_insert_term($name, $taxonomy, ['slug' => $property_type]);
+
                 if (is_wp_error($result)) {
-                    // 记录错误日志
                     error_log("无法创建物业类型 '{$property_type}': " . $result->get_error_message());
                     return false;
                 }
+
                 $term_id = $result['term_id'];
             } else {
+                error_log('Property Type: ' . $property_type . ' already exists.');
                 $term_id = $term->term_id;
             }
 
-            // 将术语与当前文章关联
-            $set_result = wp_set_object_terms($post_id, (int)$term_id, $taxonomy, false);
-            if (is_wp_error($set_result)) {
-                // 记录错误日志
-                error_log("无法将物业类型 '{$property_type}' 分配给文章 ID {$post_id}: " . $set_result->get_error_message());
-            }
+            // 给 post 设置分类（假设你已创建了 property）
+            wp_set_object_terms($post_id, intval($term_id), $taxonomy);
         }
 
         // 解析图片 URL 数组
