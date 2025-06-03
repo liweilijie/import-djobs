@@ -464,10 +464,13 @@ class SalePropertyImporter
             if ($city) {
                 error_log("[JIWU] 根据邮编 {$listing['postcode']} 解析出的城市名称为：{$city}");
             } else {
-                error_log("[JIWU] 无法根据邮编 {$listing['postcode']} 找到城市名称");
+                $msg = "[JIWU] 无法根据邮编 {$listing['postcode']} 找到城市名称";
+                error_log($msg);
+                throw new \RuntimeException($msg);
             }
+        } else {
+            throw new \InvalidArgumentException('[JIWU] 缺少 postcode，无法解析城市');
         }
-
 
         // 定义 taxonomy 与值的映射关系
         $taxonomy_map = [
