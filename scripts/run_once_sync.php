@@ -8,3 +8,7 @@ require_once dirname(__FILE__, 2) . '/includes/repair_taxonomy_chinese.php';
 //repair_taxonomy_chinese();
 //jiwu_import_cleaned_suburb_csv('/home/bst/suburbs.csv');
 //jiwu_import_property_types();
+
+
+
+jiwu_duplicate_property_cities_to_zh_hans();

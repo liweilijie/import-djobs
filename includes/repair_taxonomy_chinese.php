@@ -195,3 +195,72 @@ function jiwu_import_cleaned_suburb_csv($csv_path) {
     fclose($handle);
     echo "🎉 完成，处理了 {$row} 行数据。\n";
 }
+
+function jiwu_duplicate_property_cities_to_zh_hans() {
+    // 设置无限执行时间
+    set_time_limit(0);
+
+    // 引入 WordPress 环境
+    require_once dirname(__FILE__, 5) . '/wp-load.php';
+
+
+    if (!function_exists('wpml_get_element_trid')) {
+        error_log('[JIWU] WPML functions not available');
+        return;
+    }
+
+    $taxonomy = 'property_city';
+
+    $terms = get_terms([
+        'taxonomy'   => $taxonomy,
+        'hide_empty' => false,
+        'lang'       => 'en', // 只查英文术语
+    ]);
+
+    foreach ($terms as $term) {
+        error_log('process term:' . print_r($term, true));
+
+        // 检查是否已有 zh-hans 的翻译
+        $trid = apply_filters('wpml_element_trid', null, [
+            'element_id'   => $term->term_id,
+            'element_type' => 'tax_' . $taxonomy,
+        ]);
+
+        error_log('$trid: ' . $trid);
+
+        $translated_term_id = apply_filters('wpml_object_id', $term->term_id, $taxonomy, false, 'zh-hans');
+
+        if ($translated_term_id && $translated_term_id != $term->term_id) {
+            error_log("[JIWU] {$term->name} 已有 zh-hans 翻译，跳过");
+            continue;
+        }
+
+        // 构造 slug 和名称
+        $translated_slug = $term->slug . '-zh-hans';
+
+        error_log('create term:' . $term->name . ' taxonomy:' . $taxonomy . ' slug:' . $translated_slug);
+
+        // 创建翻译术语
+        $result = wp_insert_term($term->name, $taxonomy, [
+            'slug' => $translated_slug,
+        ]);
+
+        if (is_wp_error($result)) {
+            error_log("[JIWU] 创建 {$term->name} 翻译失败：" . $result->get_error_message());
+            continue;
+        }
+
+        $new_term_id = $result['term_id'];
+
+        // 设置语言绑定
+        do_action('wpml_set_element_language_details', [
+            'element_id'    => $new_term_id,
+            'element_type'  => 'tax_' . $taxonomy,
+            'trid'          => $trid,
+            'language_code' => 'zh-hans',
+            'source_language_code' => 'en',
+        ]);
+
+        error_log("[JIWU] 创建 zh-hans 翻译成功: {$term->name} => {$translated_slug}");
+    }
+}

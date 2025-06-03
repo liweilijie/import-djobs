@@ -30,8 +30,23 @@ class JiwuDeepSeekTranslator
     public function translateToChinese(string $text): string
     {
         $messages = [
-            ['role' => 'system', 'content' => '你是一名专业的翻译助手。'],
-            ['role' => 'user', 'content' => "请将以下英文内容翻译为简体中文：\n\n" . $text]
+            [
+                'role' => 'system',
+                'content' => implode("\n", [
+                    '你是一名专业的中英翻译助手。',
+                    '请严格遵循以下翻译准则：',
+                    '1. 仅返回最终译文，不要包含任何解释、注释或多语言对照；',
+                    '2. 禁用任何“注：”、“说明：”等提示性文字；',
+                    '3. 保持译文与原文的字数风格尽量匹配；',
+                    '4. 术语使用专业，尤其针对房地产领域；',
+                    '5. 保证翻译流畅自然，适合网站展示；',
+                    '6. 使用符合现代中文网页标准的表达方式，避免晦涩或生硬的句式；',
+                ])
+            ],
+            [
+                'role' => 'user',
+                'content' => "请将以下英文内容翻译为简体中文：\n\n" . $text
+            ]
         ];
 
         $data = [
@@ -168,35 +183,6 @@ class JiwuDeepSeekTranslator
         // ✅ Step: 复制字段
         $this->safe_copy_post_meta($post_id, $translated_post_id);
 
-
-//        $multiple_meta_keys = ['fave_property_images', 'fave_agents']; // 所有你知道是多值的字段
-//
-//        foreach ($all_meta as $meta_key => $meta_values) {
-//            if (strpos($meta_key, '_icl_') === 0 || $meta_key === '_wpml_media_has_media') {
-//                continue;
-//            }
-//
-//            if (count($meta_values) > 1) {
-//                if (!in_array($meta_key, $multiple_meta_keys)) {
-//                   error_log('TODO: multiple meta keys:' . $meta_key . print_r($meta_values, true));
-//                }
-//            }
-//
-//            // 如果是多值字段（如 fave_property_images）
-//            if (in_array($meta_key, $multiple_meta_keys, true)) {
-//                foreach (array_unique($meta_values) as $meta_value) {
-//                    add_post_meta($translated_post_id, $meta_key, maybe_unserialize($meta_value));
-//                }
-//            } else {
-//                // 单值字段：取最后一个（或首个），并 update
-//                update_post_meta(
-//                    $translated_post_id,
-//                    $meta_key,
-//                    maybe_unserialize(end($meta_values))
-//                );
-//            }
-//        }
-
         // 复制特色图片（缩略图）
         $thumbnail_id = get_post_thumbnail_id( $post_id );
         if ( $thumbnail_id ) {
@@ -206,8 +192,37 @@ class JiwuDeepSeekTranslator
         }
 
         error_log("[JIWU] 翻译完成: 原文 $post_id => 中文 $translated_post_id");
+
+        $this->jiwu_fix_term_counts();
+
         return $translated_post_id;
     }
+
+    private function jiwu_fix_term_counts(): void {
+        $taxonomies = ['property_city', 'property_status', 'property_type', 'property_feature', 'property_state', 'property_country'];
+
+        foreach (['en', 'zh-hans'] as $lang) {
+            do_action('wpml_switch_language', $lang);
+            foreach ($taxonomies as $taxonomy) {
+                $term_ids = get_terms([
+                    'taxonomy'   => $taxonomy,
+                    'hide_empty' => false,
+                    'fields'     => 'ids',
+                    'lang'       => $lang,
+                ]);
+
+                // foreach ($term_ids as $tid) {
+                //    $term = get_term($tid, $taxonomy);
+                //    error_log("[FIX][$lang] $taxonomy => {$term->name} ({$term->slug}) [ID: $tid]");
+                //}
+
+                if (!empty($term_ids)) {
+                    wp_update_term_count_now($term_ids, $taxonomy);
+                }
+            }
+        }
+    }
+
 
     /**
      * 安全复制 post_meta 数据（支持多值字段，如 fave_property_images）

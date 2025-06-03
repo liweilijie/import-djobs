@@ -30,21 +30,20 @@ function jiwu_process_sale_tasks() {
         if ($task) {
             // 获取任务数据
             $data = json_decode($task[1], true);
-            $data = arrayToObject($data);
-            $id = $data->id;
+            // $data = arrayToObject($data); 在转化之后会存在null值判断有风险的情况，所以安全的做法还是用数组最可靠
+            $id = $data["id"];
 
-            error_log('process:' . $data->url);
-//            error_log(print_r($data, true));
+            error_log('process:' . $data["url"]);
             // 处理任务
             $importer = new SalePropertyImporter();
             $rst = $importer->process($data);
 
             // 将对应记录的 status 设置为 2（已处理）
             if ($rst) {
-                error_log($data->url . ' process success');
+                error_log($data["url"] . ' process success');
                 $wpdb->update($table, ['status' => 2], ['id' => $id]);
             } else {
-                error_log($data->url . ' process error');
+                error_log($data["url"] . ' process error');
                 $wpdb->update($table, ['status' => 3], ['id' => $id]);
             }
 
@@ -86,13 +85,9 @@ class SalePropertyImporter
 
     /**
      * 处理整个导入流程的主方法
-     *
-     * @param array $listing 房产数据，包含所需字段 (如 'id', 'title', 'description' 等)
-     * @return int|false 成功时返回文章 ID，失败时返回 false
      */
-    public function process($listing)
+    public function process(array $listing): bool|int
     {
-        global $wpdb;
         try {
             // 验证输入字段
             $this->validate_listing($listing);
@@ -116,6 +111,7 @@ class SalePropertyImporter
             $this->handle_property_images($post_id, $listing);
             $this->handle_floor_plans($post_id, $listing);
             $this->handle_agency_and_agents($post_id, $listing);
+            $this->handle_update_price_guide_pdf($post_id, $listing);
 
             // 全部流程成功后，将文章状态更新为发布
             wp_update_post([
@@ -123,6 +119,8 @@ class SalePropertyImporter
                 'post_status' => 'publish'
             ]);
             error_log("房产列表 (ID: $post_id) 处理完成并已发布");
+
+            $this->jiwu_fix_term_counts();
 
             $translated_id = JiwuDeepSeekTranslator::translateProperty($post_id);
 
@@ -139,18 +137,18 @@ class SalePropertyImporter
         }
     }
 
-    private function validate_listing($listing)
+    private function validate_listing(array $listing): void
     {
-        if (empty($listing->unique_id)) {
+        if (empty($listing['unique_id'])) {
             error_log("房产列表验证失败: 缺少 'id' 字段");
             throw new \Exception("缺少房产 ID");
         }
-        if (empty($listing->postcode)) {
+        if (empty($listing['postcode'])) {
             error_log("房产列表验证失败: 缺少 'title' 字段 (ID: {$listing['id']})");
             throw new \Exception("缺少房产标题");
         }
 
-        if (empty($listing->listing_type)) {
+        if (empty($listing['listing_type'])) {
             throw new \Exception("房源缺少 listing_type 字段");
         }
 
@@ -162,19 +160,7 @@ class SalePropertyImporter
         // 可根据需求添加更多字段验证
     }
 
-    /**
-     * 根据 unique_id 查询已存在的 property 文章
-     *
-     * @param string $unique_id
-     * @return int|false 返回 post_id，如果不存在则返回 false
-     */
-    /**
-     * 根据 $listing->unique_id 查找是否已存在对应的 property 文章
-     *
-     * @param object $listing
-     * @return int|false 返回 post_id，如果不存在则返回 false
-     */
-    private function find_existing_property_post(object $listing): bool|int
+    private function find_existing_property_post(array $listing): bool|int
     {
         $args = [
             'post_type' => 'property',
@@ -183,7 +169,7 @@ class SalePropertyImporter
             'meta_query' => [
                 [
                     'key' => $this->imported_ref_key,
-                    'value' => $listing->unique_id,
+                    'value' => $listing['unique_id'],
                     'compare' => '='
                 ]
             ]
@@ -202,7 +188,7 @@ class SalePropertyImporter
         return false;
     }
 
-    private function create_post($listing)
+    private function create_post(array $listing): WP_Error|int
     {
         global $wpdb;
 
@@ -210,8 +196,8 @@ class SalePropertyImporter
             'post_type' => 'property',
             'post_status' => 'draft',
             'post_title' => wp_strip_all_tags($this->display_address),
-            'post_excerpt' => $listing->title ?? '',
-            'post_content' => $listing->description ?? '',
+            'post_excerpt' => $listing['title'] ?? '',
+            'post_content' => $listing['description'] ?? '',
             'comment_status' => 'closed',
         ];
 
@@ -221,28 +207,24 @@ class SalePropertyImporter
             throw new \Exception("创建文章失败");
         }
         // 保存外部房产 ID
-        update_post_meta($post_id, $this->imported_ref_key, $listing->unique_id);
-        $wpdb->update($this->table_name, ['status' => 1, 'post_id' => $post_id], ['id' => $listing->id]);
+        update_post_meta($post_id, $this->imported_ref_key, $listing['unique_id']);
+        $wpdb->update($this->table_name, ['status' => 1, 'post_id' => $post_id], ['id' => $listing['id']]);
         error_log("创建新的房产文章 (en.ID: $post_id)");
         return $post_id;
     }
 
     /**
      * 更新已有的房产文章内容（仅更新必要字段，保持草稿状态）
-     *
-     * @param int $post_id
-     * @param array $listing
-     * @throws \Exception 如果更新失败
      */
-    private function update_post($post_id, $listing): void
+    private function update_post(int $post_id, array $listing): void
     {
         global $wpdb;
 
         $update_data = [
             'ID' => $post_id,
             'post_title' => wp_strip_all_tags($this->display_address),
-            'post_excerpt' => $listing->title ?? '',
-            'post_content' => $listing->description ?? '',
+            'post_excerpt' => $listing['title'] ?? '',
+            'post_content' => $listing['description'] ?? '',
             // 保持 post_status 不变 (仍为 draft)
         ];
         $updated = wp_update_post($update_data, true);
@@ -251,17 +233,17 @@ class SalePropertyImporter
             throw new \Exception("更新文章失败");
         }
 
-        $wpdb->update($this->table_name, ['status' => 1, 'post_id' => $post_id], ['id' => $listing->id]);
+        $wpdb->update($this->table_name, ['status' => 1, 'post_id' => $post_id], ['id' => $listing['id']]);
         error_log("更新房产文章 (ID: $post_id)");
     }
 
-    private function get_display_address(object $listing): string {
+    private function get_display_address(array $listing): string {
         $parts = [];
 
-        if (!empty($listing->street))   $parts[] = trim($listing->street);
-        if (!empty($listing->suburb))   $parts[] = trim($listing->suburb);
-        if (!empty($listing->state))    $parts[] = strtoupper(trim($listing->state));
-        if (!empty($listing->postcode)) $parts[] = trim($listing->postcode);
+        if (!empty($listing['street']))   $parts[] = trim($listing['street']);
+        if (!empty($listing['suburb']))   $parts[] = trim($listing['suburb']);
+        if (!empty($listing['state']))    $parts[] = strtoupper(trim($listing['state']));
+        if (!empty($listing['postcode'])) $parts[] = trim($listing['postcode']);
 
         return implode(', ', $parts);
     }
@@ -271,7 +253,7 @@ class SalePropertyImporter
      *
      * @param int $post_id
      */
-    private function delete_post($post_id)
+    private function delete_post(int $post_id): void
     {
         // 强制删除文章
         if (wp_delete_post($post_id, true)) {
@@ -281,7 +263,7 @@ class SalePropertyImporter
         }
     }
 
-    private function update_property_basic_meta(int $post_id, object $listing): void
+    private function update_property_basic_meta(int $post_id, array $listing): void
     {
         /*
          * 在 Houzez 主题中，显示房产价格时，通常使用以下两个 meta key：
@@ -293,29 +275,32 @@ class SalePropertyImporter
          *  update_post_meta($post_id, 'fave_property_price_postfix', 'Contact Agent');
          *  这样设置后，Houzez 主题将在前端显示“Contact Agent”而不是具体的价格。
          */
-        if (!empty($listing->lower_price)) {
-            update_post_meta($post_id, 'fave_property_price', $listing->lower_price);
-        } else if (!empty($listing->upper_price)) {
-            update_post_meta($post_id, 'fave_property_price', $listing->upper_price);
-        } else if (!empty($listing->price_text)) {
+        if (!empty($listing['lower_price']) && !empty($listing['upper_price'])) {
+            update_post_meta($post_id, 'fave_property_price', $listing['lower_price']);
+            $postfix = ' - $' . number_format($listing['upper_price']);
+            update_post_meta($post_id, 'fave_property_price_postfix', $postfix);
+        } elseif (!empty($listing['lower_price'])) {
+            update_post_meta($post_id, 'fave_property_price', $listing['lower_price']);
+            update_post_meta($post_id, 'fave_property_price_postfix', '');
+        } elseif (!empty($listing['upper_price'])) {
+            update_post_meta($post_id, 'fave_property_price', $listing['upper_price']);
+            update_post_meta($post_id, 'fave_property_price_postfix', '');
+        } elseif (!empty($listing['price_text'])) {
             update_post_meta($post_id, 'fave_property_price', '');
-            update_post_meta($post_id, 'fave_property_price_postfix', $listing->price_text);
-            error_log($post_id . 'set price_postfix: ' . $listing->price_text);
+            update_post_meta($post_id, 'fave_property_price_postfix', $listing['price_text']);
         }
 
-        update_post_meta($post_id, 'fave_property_price_postfix', '');
-
         // 房间配置
-        update_post_meta($post_id, 'fave_property_bedrooms', $listing->bedrooms ?? '');
-        update_post_meta($post_id, 'fave_property_bathrooms', $listing->bathrooms ?? '');
-        update_post_meta($post_id, 'fave_property_garage', $listing->car_spaces ?? '');
+        update_post_meta($post_id, 'fave_property_bedrooms', $listing['bedrooms'] ?? '');
+        update_post_meta($post_id, 'fave_property_bathrooms', $listing['bathrooms'] ?? '');
+        update_post_meta($post_id, 'fave_property_garage', $listing['car_spaces'] ?? '');
 
         // 外部 ID
-        update_post_meta($post_id, 'fave_property_id', $listing->unique_id);
+        update_post_meta($post_id, 'fave_property_id', $listing['unique_id']);
 
         // 面积
-        if (!empty($listing->land_size)) {
-            update_post_meta($post_id, 'fave_property_size', $listing->land_size);
+        if (!empty($listing['land_size'])) {
+            update_post_meta($post_id, 'fave_property_size', $listing['land_size']);
             update_post_meta($post_id, 'fave_property_size_prefix', 'm²');
         } else {
             update_post_meta($post_id, 'fave_property_size', '');
@@ -323,13 +308,13 @@ class SalePropertyImporter
         }
     }
 
-    private function assign_property_status_term(int $post_id, object $listing): void
+    private function assign_property_status_term(int $post_id, array $listing): void
     {
-        if (empty($listing->listing_type)) {
+        if (empty($listing['listing_type'])) {
             throw new \Exception("房源缺少 listing_type 字段");
         }
 
-        $status = strtolower(trim($listing->listing_type));
+        $status = strtolower(trim($listing['listing_type']));
         $term_name = match ($status) {
             'sale'      => 'For Sale',
             'rental'    => 'For Rent',
@@ -364,9 +349,9 @@ class SalePropertyImporter
         }
     }
 
-    private function assign_property_type(int $post_id, object $listing): void
+    private function assign_property_type(int $post_id, array $listing): void
     {
-        $property_type = $listing->property_type ?? '';
+        $property_type = $listing['property_type'] ?? '';
         $taxonomy = 'property_type';
 
         if (empty($property_type)) {
@@ -404,10 +389,10 @@ class SalePropertyImporter
     }
 
 
-    private function update_property_features(int $post_id, object $listing): void
+    private function update_property_features(int $post_id, array $listing): void
     {
         $taxonomy = 'property_feature';
-        $features = json_decode($listing->features ?? '[]', true);
+        $features = json_decode($listing['features'] ?? '[]', true);
         $additional = [];
         $term_ids = [];
 
@@ -460,17 +445,29 @@ class SalePropertyImporter
         }
     }
 
-    private function update_property_location(int $post_id, object $listing): void
+    private function update_property_location(int $post_id, array $listing): void
     {
-        $state    = isset($listing->state) ? strtoupper(trim($listing->state)) : '';
-        $country  = isset($listing->country) ? strtoupper(trim($listing->country)) : 'Australia';
-        $suburb   = isset($listing->suburb) ? trim($listing->suburb) : '';
-        $street   = isset($listing->street) ? trim($listing->street) : '';
-        $postcode = isset($listing->postcode) ? trim($listing->postcode) : '';
-        $area     = isset($listing->area) ? trim($listing->area) : '';
-        $city = !empty($listing->city)
-            ? trim($listing->city)
-            : $this->resolve_city_by_postcode($listing->postcode ?? '');
+        $state    = isset($listing['state']) ? strtoupper(trim($listing['state'])) : '';
+        $country  = isset($listing['country']) ? strtoupper(trim($listing['country'])) : 'Australia';
+        $suburb   = isset($listing['suburb']) ? trim($listing['suburb']) : '';
+        $street   = isset($listing['street']) ? trim($listing['street']) : '';
+        $postcode = isset($listing['postcode']) ? trim($listing['postcode']) : '';
+        $area     = isset($listing['area']) ? trim($listing['area']) : '';
+        // $city = !empty($listing['city'])
+          //  ? trim($listing['city'])
+           // : $this->resolve_city_by_postcode($listing['postcode'] ?? '');
+        $city = null;
+
+        if (!empty($listing['postcode'])) {
+            $city = $this->resolve_city_by_postcode(trim($listing['postcode']));
+
+            if ($city) {
+                error_log("[JIWU] 根据邮编 {$listing['postcode']} 解析出的城市名称为：{$city}");
+            } else {
+                error_log("[JIWU] 无法根据邮编 {$listing['postcode']} 找到城市名称");
+            }
+        }
+
 
         // 定义 taxonomy 与值的映射关系
         $taxonomy_map = [
@@ -510,8 +507,8 @@ class SalePropertyImporter
         update_post_meta($post_id, 'fave_featured', '');
 
         // 经纬度坐标（如果有）
-        $latitude  = $listing->latitude ?? '';
-        $longitude = $listing->longitude ?? '';
+        $latitude  = $listing['latitude'] ?? '';
+        $longitude = $listing['longitude'] ?? '';
 
         if (!empty($latitude) && !empty($longitude)) {
             update_post_meta($post_id, 'fave_property_location', "{$latitude},{$longitude},14");
@@ -587,20 +584,20 @@ class SalePropertyImporter
     /**
      * 处理房源图片，集成 EXMAGE 插件上传并设置为特色图和图库
      *
-     * @param object $listing
+     * @param array $listing
      * @param int $post_id
      * @return void
      */
-    private function handle_property_images(int $post_id, object $listing): void
+    private function handle_property_images(int $post_id, array $listing): void
     {
-        if (empty($listing->images)) {
+        if (empty($listing['images'])) {
             error_log("📷 图片字段为空，跳过图像处理。");
             return;
         }
 
-        $images = json_decode($listing->images, true);
+        $images = json_decode($listing['images'], true);
         if (!is_array($images) || empty($images)) {
-            error_log("📷 图片解析失败或格式错误：" . print_r($listing->images, true));
+            error_log("📷 图片解析失败或格式错误：" . print_r($listing['images'], true));
             return;
         }
 
@@ -645,19 +642,19 @@ class SalePropertyImporter
         }
     }
 
-    private function handle_floor_plans(int $post_id, object $listing): void
+    private function handle_floor_plans(int $post_id, array $listing): void
     {
-        if (empty($listing->floor_plan)) {
+        if (empty($listing['floor_plan'])) {
             update_post_meta($post_id, 'fave_floor_plans_enable', 'disable');
             error_log("📐 没有 floor_plan 字段内容，已禁用户型图显示。");
             return;
         }
 
-        $floorplan_urls = json_decode($listing->floor_plan, true);
+        $floorplan_urls = json_decode($listing['floor_plan'], true);
 
         if (!is_array($floorplan_urls) || empty($floorplan_urls)) {
             update_post_meta($post_id, 'fave_floor_plans_enable', 'disable');
-            error_log("📐 floor_plan 解码失败或为空：" . print_r($listing->floor_plan, true));
+            error_log("📐 floor_plan 解码失败或为空：" . print_r($listing['floor_plan'], true));
             return;
         }
 
@@ -684,9 +681,9 @@ class SalePropertyImporter
         }
     }
 
-    private function handle_agency_and_agents(int $post_id, object $listing): void {
-        $agency = json_decode($listing->agency);   // 返回 stdClass 对象
-        $agents = json_decode($listing->agents);
+    private function handle_agency_and_agents(int $post_id, array $listing): void {
+        $agency = json_decode($listing['agency']);   // 返回 stdClass 对象
+        $agents = json_decode($listing['agents']);
 
         // 1. 确保 agents 数据存在
         if (empty($agents) || !is_array($agents) || count($agents) === 0) {
@@ -729,16 +726,15 @@ class SalePropertyImporter
                         if ($this->is_exmage_success($result)) {
                             $attachment_id = $result['id'];
 
-                            // 如果图片已存在，确保设置 post_parent
-                            if ($result['message'] === 'Image exists') {
-                                wp_update_post([
-                                    'ID' => $attachment_id,
-                                    'post_parent' => $agency_id,
-                                ]);
-                            }
-
                             // 设置特色图像
                             set_post_thumbnail($agency_id, $attachment_id);
+
+                            // 强制设置 post_parent，不论图片是否重复上传
+                            wp_update_post([
+                                'ID' => $attachment_id,
+                                'post_parent' => $agency_id,
+                            ]);
+
                             error_log("✅ 设置 agency logo {$agency_logo_url} 到 {$agency_name} (ID {$agency_id})");
                         } else {
                             error_log("❌ EXMAGE 添加 agency logo 失败: " . ($result['message'] ?? '未知错误'));
@@ -828,17 +824,15 @@ class SalePropertyImporter
                 if ($this->is_exmage_success($result)) {
                     $attachment_id = $result['id'];
 
-                    // 如果图片已存在，手动设置其 post_parent
-                    if ($result['message'] === 'Image exists') {
-                        $attachment = array(
-                            'ID' => $attachment_id,
-                            'post_parent' => $agent_id,
-                        );
-                        wp_update_post($attachment);
-                    }
-
                     // 将图片设置为代理人的特色图像
                     set_post_thumbnail($agent_id, $attachment_id);
+
+                    // 始终强制设置 post_parent，确保 thumbnail 能正确渲染
+                    wp_update_post([
+                        'ID' => $attachment_id,
+                        'post_parent' => $agent_id,
+                    ]);
+
                     error_log("Set photo for agent ID {$agent_id} from URL '{$image_url}'.");
                 } else {
                     error_log("Failed to set photo for agent ID {$agent_id} from URL '{$image_url}': " . ($result['message'] ?? 'unknown error'));
@@ -865,4 +859,61 @@ class SalePropertyImporter
             );
     }
 
+    private function handle_update_price_guide_pdf(int $post_id, array $listing): void
+    {
+        if (!function_exists('update_field')) {
+            error_log('[JIWU] ACF 插件未启用，update_field 函数不存在');
+            return;
+        }
+
+        if (empty($listing['statement_pdf'])) {
+            error_log('[JIWU] statement_pdf 字段为空');
+            return;
+        }
+
+        // JSON 解码
+        $json_string = $listing['statement_pdf'];
+        $decoded_urls = json_decode($json_string, true);
+
+        if (!is_array($decoded_urls) || empty($decoded_urls)) {
+            error_log('[JIWU] statement_pdf JSON 解码失败或不是有效数组: ' . $json_string);
+            return;
+        }
+
+        $first_url = $decoded_urls[0] ?? '';
+
+        if (empty($first_url) || !filter_var($first_url, FILTER_VALIDATE_URL)) {
+            error_log('[JIWU] statement_pdf 中第一个 URL 无效: ' . $first_url);
+            return;
+        }
+
+        // 写入 ACF 自定义字段
+        update_field('price_guide_pdf', esc_url_raw($first_url), $post_id);
+    }
+
+
+    private function jiwu_fix_term_counts(): void {
+        $taxonomies = ['property_city', 'property_status', 'property_type', 'property_feature', 'property_state', 'property_country'];
+
+        foreach (['en', 'zh-hans'] as $lang) {
+            do_action('wpml_switch_language', $lang);
+            foreach ($taxonomies as $taxonomy) {
+                $term_ids = get_terms([
+                    'taxonomy'   => $taxonomy,
+                    'hide_empty' => false,
+                    'fields'     => 'ids',
+                    'lang'       => $lang,
+                ]);
+
+                // foreach ($term_ids as $tid) {
+                //    $term = get_term($tid, $taxonomy);
+                //    error_log("[FIX][$lang] $taxonomy => {$term->name} ({$term->slug}) [ID: $tid]");
+                //}
+
+                if (!empty($term_ids)) {
+                    wp_update_term_count_now($term_ids, $taxonomy);
+                }
+            }
+        }
+    }
 }
